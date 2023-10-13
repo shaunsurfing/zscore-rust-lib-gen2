@@ -197,6 +197,7 @@ impl CandleBuilder {
     // Add final number if less than max required
     if final_n > 0 {
       let start_time: i64 = subtract_time(end_time, &self.interval, &final_n);
+
       let call_item: CallItem = CallItem {
         from_time: start_time,
         to_time: end_time,

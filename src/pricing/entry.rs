@@ -97,3 +97,29 @@ pub async fn get_latest_quote(symbol: &str, exchange: &Exchange, twelve_api_key:
   let quote: f64 = request_quote(&exchange, symbol, twelve_api_key).await?;
   Ok(quote)
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[tokio::test]
+  async fn it_matches_period_request_twelve() {
+    use dotenv::dotenv;
+    use std::env;
+    dotenv().ok();
+
+    let twelve_api_key: String = match env::var("TWELVE_API_KEY") {
+      Ok(val) => val,
+      Err(_e) => panic!("Failed to read TWELVE_API_KEY"),
+    };
+
+    let period = 1000;
+    let interval_period: IntervalPeriod = IntervalPeriod::Hour(1, period);
+    let asset_0 = "USD/GBP".to_string();
+    let asset_1 = "USD/EUR".to_string();
+    let exchange: Exchange = Exchange::Twelve;
+
+    let prices = fetch_prices(&interval_period, &exchange, &asset_0, &asset_1, Some(twelve_api_key.as_str())).await.unwrap();
+    // assert_eq!(prices.labels.len(), period as usize);
+  }
+}

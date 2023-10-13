@@ -117,7 +117,6 @@ pub async fn full_pair_analysis(analysis_criteria: AnalysisCriteria, twelve_api_
   Web Assembly Calls
 */
 
-
 /// WASM Entry - Exchange Tickers
 /// Provides 
 #[wasm_bindgen]
