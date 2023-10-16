@@ -1,3 +1,5 @@
+use std::process::Output;
+
 use wasm_bindgen::prelude::wasm_bindgen;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -37,6 +39,12 @@ pub struct PairAnalysis {
   pub prices: PairPrices,
   pub stats: Statistics,
   pub bt_metrics: BacktestMetrics
+}
+
+/// Single Quote
+/// Retrieves a single quote from an exchange provider
+pub async fn single_quote(exchange: &Exchange, symbol: &str, twelve_api_key: Option<&str>) -> Result<f64, SmartError> {
+  request_quote(exchange, symbol, twelve_api_key).await
 }
 
 /// Full Analysis From Pair Prices
@@ -126,6 +134,18 @@ pub async fn wasm_exchange_tickers(json_input: String) -> Result<String, String>
   let symbols: Vec<String> = request_symbols(&exchange, Some(asset_type)).await
     .map_err(|e| e.to_string())?;
   Ok(serde_json::to_string(&symbols).unwrap_or_else(|e| e.to_string()))
+}
+
+/// WASM Entry - Exchange Single Quote
+/// Extracts status for a single exchange
+#[wasm_bindgen]
+pub async fn wasm_exchange_single_quote(exchange: String, symbol: String) -> Result<String, String> {
+  let exchange: Exchange = Exchange::create_from_string(exchange.as_str());
+
+  let quote: f64 = single_quote(&exchange, symbol.as_str(), None).await
+    .map_err(|e| e.to_string())?;
+  
+  Ok(quote.to_string())
 }
 
 /// WASM Entry - Exchange Quotes
@@ -342,13 +362,13 @@ mod tests {
       indicator_values: zscore,
       trigger_indicator: TriggerIndicator::Zscore,
       relation: Relation::Ignore,
-      cost_per_leg: None,
+      cost_per_leg: Some(0.0005),
       rets_weighting_s0_perc: 0.5,
       long_series: LongSeries::Series0,
       stop_loss: 0.0,
       long_thresh: -2.0,
       long_close_thresh: 0.0,
-      short_thresh: 200.0,
+      short_thresh: 2.0,
       short_close_thresh: 0.0
     };
 
