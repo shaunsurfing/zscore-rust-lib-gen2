@@ -143,7 +143,7 @@ mod tests {
 
   #[tokio::test]
   async fn tests_retrieve_quote_binance_us() {
-    let price = request_quote(&Exchange::Binance, "BTCUSDT", None).await;
+    let price = request_quote(&Exchange::BinanceUs, "BTCUSDT", None).await;
     assert!(price.unwrap() > 0.0);
   }
 

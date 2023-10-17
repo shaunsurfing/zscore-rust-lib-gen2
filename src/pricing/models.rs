@@ -35,6 +35,16 @@ pub struct QuoteExch {
 }
 
 /*
+  Quote Multi Models
+*/
+
+#[derive(Debug, Serialize)]
+pub struct QuotePrice {
+  pub symbol: String,
+  pub price: f64,
+}
+
+/*
   Candles Models
 */
 
@@ -102,6 +112,7 @@ impl Exchange {
     match exchange_str {
       "Binance" => Exchange::Binance,
       "BinanceUs" => Exchange::BinanceUs,
+      "ByBit" => Exchange::ByBit,
       "Coinbase" => Exchange::Coinbase,
       "Dydx" => Exchange::Dydx,
       "Fmp" => Exchange::Twelve,

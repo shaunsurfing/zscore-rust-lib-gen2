@@ -7,10 +7,11 @@ use ts_rs::TS;
 use crate::SmartError;
 use super::backtest::evaluation::BacktestMetrics;
 use super::backtest::models::{Backtest, BacktestCriteria, LongSeries, TriggerIndicator, Relation};
-use super::pricing::models::{AssetType, DataCriteria, Exchange, PairPrices};
+use super::pricing::models::{AssetType, DataCriteria, Exchange, PairPrices, QuotePrice};
 use super::pricing::symbols::request_symbols;
 use super::pricing::entry::fetch_prices;
 use super::pricing::quotes::request_quote;
+use super::pricing::quotemulti::request_multi_quote;
 use super::stats::models::{SpreadType, Statistics, Coint};
 use super::stats::metrics::{
   spread_dynamic_kalman, spread_static_std, rolling_zscore, 
@@ -45,6 +46,12 @@ pub struct PairAnalysis {
 /// Retrieves a single quote from an exchange provider
 pub async fn single_quote(exchange: &Exchange, symbol: &str, twelve_api_key: Option<&str>) -> Result<f64, SmartError> {
   request_quote(exchange, symbol, twelve_api_key).await
+}
+
+/// Single Quote
+/// Retrieves a single quote from an exchange provider
+pub async fn multi_symbol_quote(exchange: &Exchange, symbols: Vec<&str>, twelve_api_key: Option<&str>) -> Result<Vec<QuotePrice>, SmartError> {
+  request_multi_quote(exchange, symbols, twelve_api_key).await
 }
 
 /// Full Analysis From Pair Prices
@@ -144,8 +151,22 @@ pub async fn wasm_exchange_single_quote(exchange: String, symbol: String) -> Res
 
   let quote: f64 = single_quote(&exchange, symbol.as_str(), None).await
     .map_err(|e| e.to_string())?;
-  
+
   Ok(quote.to_string())
+}
+
+/// WASM Entry - Multi Symbol Quote
+/// Extracts status for multiple symbols
+#[wasm_bindgen]
+pub async fn wasm_multi_symbol_quote(exchange: String, symbols: String) -> Result<String, String> {
+  let exchange: Exchange = Exchange::create_from_string(exchange.as_str());
+  let symbols: Vec<&str> = serde_json::from_str::<Vec<&str>>(&symbols).map_err(|e| e.to_string())?;
+
+  let quotes: Vec<QuotePrice> = multi_symbol_quote(&exchange, symbols, None).await
+    .map_err(|e| e.to_string())?;
+
+  let quote_json: String = serde_json::to_string::<Vec<QuotePrice>>(&quotes).map_err(|e| e.to_string())?;
+  Ok(quote_json)
 }
 
 /// WASM Entry - Exchange Quotes
@@ -331,6 +352,20 @@ mod tests {
     let json_decoded: PairAnalysis = serde_json::from_str::<PairAnalysis>(&analysis).unwrap();
     assert!(json_decoded.bt_metrics.win_rate_stats.win_rate > 0.0);
     // dbg!(json_decoded.bt_metrics.win_rate_stats);
+  }
+
+  #[tokio::test]
+  async fn it_extracts_single_quote() {
+    let res = wasm_exchange_single_quote("Binance".to_string(), "BTCUSDT".to_string()).await.unwrap();
+    dbg!(res);
+  }
+
+  #[tokio::test]
+  async fn it_extracts_multi_symbol_quote() {
+    let symbols: Vec<&str> = vec!["BTCUSDT", "ETHUSDT", "LINKUSDT"];
+    let symbols_json: String = serde_json::to_string::<Vec<&str>>(&symbols).unwrap();
+    let res = wasm_multi_symbol_quote("ByBit".to_string(), symbols_json).await.unwrap();
+    dbg!(res);
   }
 
   #[tokio::test]
