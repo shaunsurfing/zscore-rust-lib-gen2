@@ -38,7 +38,8 @@ pub struct QuoteExch {
   Quote Multi Models
 */
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
 pub struct QuotePrice {
   pub symbol: String,
   pub price: f64,

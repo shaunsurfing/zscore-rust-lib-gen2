@@ -53,22 +53,40 @@ pub fn extract_match_series(asset_1: HistoricalPrices, asset_2: HistoricalPrices
 
 /// Send API Request
 /// Sends GET request to given url and returns response
+/// NON WASM VERSION
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn api_request(url: &str) -> Result<reqwest::Response, SmartError> {
-  // let client: Client = Client::builder()
-  //   .timeout(Duration::from_secs(10))
-  //   .build()?;
+  let client: reqwest::Client = reqwest::Client::builder()
+    .timeout(Duration::from_secs(10))
+    .build()?;
 
-  // // Extract response
-  // let res: reqwest::Response = client
-  //   .get(url)
-  //   .header(reqwest::header::USER_AGENT, "CryptoWizardsApp/1.0")
-  //   .send()
-  //   .await?;
+  // Extract response
+  let res: reqwest::Response = client
+    .get(url)
+    .header(reqwest::header::USER_AGENT, "CryptoWizardsApp/1.0.0")
+    .send()
+    .await?;
+  
+  // Guard: Ensure 200 status
+  if res.status() != 200 {
+    let err: String = format!("Failed to retrieve data for: {}", url);
+    eprintln!("Error: {:?}", res.text().await);
+    return Err(SmartError::APIResponseStatus(err))
+  }
+  
+  Ok(res)
+}
+
+
+/// Send API Request
+/// Sends GET request to given url and returns response
+/// WASM VERSION
+#[cfg(target_arch = "wasm32")]
+pub async fn api_request(url: &str) -> Result<reqwest::Response, SmartError> {
 
   // WASM VERSION
   let req_future = reqwest::Client::new()
     .get(url)
-    .header(reqwest::header::USER_AGENT, "CryptoWizardsApp/1.0")
     .send();
 
   let duration = Duration::from_secs(10);
