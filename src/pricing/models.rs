@@ -116,7 +116,7 @@ impl Exchange {
       "ByBit" => Exchange::ByBit,
       "Coinbase" => Exchange::Coinbase,
       "Dydx" => Exchange::Dydx,
-      "Fmp" => Exchange::Twelve,
+      "Twelve" => Exchange::Twelve,
       _ => panic!("Incorrect or unknown exchange")
     }
   }
