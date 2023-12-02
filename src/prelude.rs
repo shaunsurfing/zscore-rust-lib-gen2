@@ -413,6 +413,4 @@ mod tests {
     let res = serde_json::from_str::<BacktestMetrics>(&res_json).unwrap();
     dbg!(res.equity_curve.len());
   }
-
-
 }

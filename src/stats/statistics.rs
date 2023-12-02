@@ -57,3 +57,66 @@ pub fn simple_kalman_filter(series_0: &Vec<f64>, series_1: &Vec<f64>) -> Vec<f64
 
   hedge_ratios
 }
+
+/// Covar Calculation
+/// Required for beta calculation
+pub fn calculate_covariance(x: &[f64], y: &[f64]) -> Result<f64, SmartError> {
+  if x.len() != y.len() {
+      return Err(SmartError::RuntimeCheck("Datasets x and y must have the same length".to_string()));
+  }
+
+  let n = x.len() as f64;
+  let mean_x: f64 = x.iter().sum::<f64>() / n;
+  let mean_y: f64 = y.iter().sum::<f64>() / n;
+
+  let covariance: f64 = x.iter()
+    .zip(y.iter())
+    .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
+    .sum::<f64>() / (n - 1.0);
+
+  Ok(covariance)
+}
+
+/// Var Calculation
+/// Required for beta calculation
+pub fn calculate_variance(series: &[f64]) -> f64 {
+  let n = series.len() as f64;
+  let mean: f64 = series.iter().sum::<f64>() / n;
+  let variance: f64 = series.iter()
+    .map(|&x| (x - mean).powi(2))
+    .sum::<f64>() / (n - 1.0);
+  variance
+}
+
+/// Historical Volatility
+/// Calculates historical annual volatility for a given asset
+pub fn calculate_historical_annual_volatility(series: &[f64], trading_days: usize) -> f64 {
+  let daily_returns: Vec<f64> = series.windows(2)
+    .map(|window| (window[1] - window[0]) / window[0])
+    .collect();
+
+  let mean_return: f64 = daily_returns.iter().sum::<f64>() / daily_returns.len() as f64;
+  let variance: f64 = daily_returns.iter()
+    .map(|&x| (x - mean_return).powi(2))
+    .sum::<f64>() / (daily_returns.len() - 1) as f64;
+  let daily_volatility: f64 = variance.sqrt();
+
+  daily_volatility * (trading_days as f64).sqrt()
+}
+
+/// Beta Coeff Calculation
+/// Used to determine the beta coeff for two assets in respect to one another
+pub fn calculate_beta_coefficient(x: &[f64], y: &[f64]) -> Result<f64, SmartError> {
+  let covariance = calculate_covariance(x, y)?;
+  let market_variance = calculate_variance(y);
+  Ok(covariance / market_variance)
+}
+
+/// Volatility Ratio
+/// Used to determine the volatility ratio of two assets
+pub fn volatility_ratio(y: &[f64], x: &[f64], trading_days: usize) -> f64 {
+  let y_volatility = calculate_historical_annual_volatility(y, trading_days);
+  let x_volatility = calculate_historical_annual_volatility(x, trading_days);
+  x_volatility / y_volatility
+}
+
