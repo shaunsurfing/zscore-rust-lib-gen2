@@ -24,11 +24,11 @@ pub enum SpreadType {
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
 #[ts(export)]
 pub struct Relationship {
-  beta_x_to_y: f64,
-  beta_y_to_x: f64,
-  annual_vol_y: f64,
-  annual_vol_x: f64,
-  vol_ratio_x_to_y: f64
+  pub beta_x_to_y: f64,
+  pub beta_y_to_x: f64,
+  pub annual_vol_y: f64,
+  pub annual_vol_x: f64,
+  pub vol_ratio_x_to_y: f64
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
