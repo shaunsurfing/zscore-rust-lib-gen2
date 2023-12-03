@@ -9,8 +9,8 @@ pub fn round_float(num: f64, decimals: i32) -> f64 {
 /// Takes in a series and calculates log returns
 pub fn log_returns(series: &Vec<f64>, is_buffer: bool) -> Vec<f64> {
   let mut log_rets: Vec<f64> = match is_buffer {
-      true => vec![0.0],
-      false => vec![],
+    true => vec![0.0],
+    false => vec![],
   };
 
   let s: Vec<f64> = series.windows(2).map(|w| {

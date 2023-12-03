@@ -12,7 +12,7 @@ use super::metrics::{
   rolling_correlation, pearson_correlation_coefficient
 };
 
-use super::statistics::{calculate_beta_coefficient, calculate_historical_annual_volatility, volatility_ratio};
+use super::statistics::calculate_relaitonship;
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
 #[ts(export)]
@@ -65,9 +65,6 @@ impl Statistics {
     z_score_w: usize, 
     roll_w: usize,
   ) -> Result<Self, SmartError> {
-
-    // Set trading days as default
-    let trading_days: usize = 252;
 
     // Guard: Ensure lengh > 0
     if series_0.len() == 0 { return Err(SmartError::RuntimeCheck("Series_0 length zero".to_string())) }
@@ -126,12 +123,8 @@ impl Statistics {
     };
 
     // Relationship
-    let beta_x_to_y: f64 = calculate_beta_coefficient(&series_1, &series_0)?;
-    let beta_y_to_x: f64 = calculate_beta_coefficient(&series_0, &series_1)?;
-    let annual_vol_y: f64 = calculate_historical_annual_volatility(&series_0, trading_days);
-    let annual_vol_x: f64 = calculate_historical_annual_volatility(&series_1, trading_days);
-    let vol_ratio_x_to_y: f64 = volatility_ratio(&series_0, &series_1, trading_days);
-    let relationship: Relationship = Relationship { beta_x_to_y, beta_y_to_x, annual_vol_y, annual_vol_x, vol_ratio_x_to_y };
+    let trading_days: usize = 252;
+    let relationship: Relationship = calculate_relaitonship(&series_0, &series_1, trading_days).map_err(|e| SmartError::RuntimeCheck(e.to_string()))?;
 
     // Consolidate Result
     let stats: Self = Self {

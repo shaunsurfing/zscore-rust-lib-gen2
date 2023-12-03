@@ -1,3 +1,6 @@
+use crate::stats::models::Relationship;
+use crate::stats::statistics::calculate_relaitonship;
+
 use wasm_bindgen::prelude::wasm_bindgen;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -208,7 +211,8 @@ struct QuickStats {
   spread: Vec<f64>,
   zscore: Vec<f64>,
   hedge_ratio: f64,
-  half_life: f64
+  half_life: f64,
+  relationship: Relationship
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, TS)]
@@ -246,18 +250,24 @@ pub async fn wasm_quick_stats(json_input: String, zscore_window_str: String) -> 
   let coint: Coint = cointegration_test_eg(&pair_prices.series_0, &pair_prices.series_1).map_err(|e| e.to_string())?;
   let corr: f64 = pearson_correlation_coefficient(&pair_prices.series_0, &pair_prices.series_1).map_err(|e| e.to_string())?;
   
+  // Relationship
+  let trading_days: usize = 252;
+  let relationship: Relationship = calculate_relaitonship(&pair_prices.series_0, &pair_prices.series_1, trading_days).map_err(|e| e.to_string())?;
+
   let stats_static: QuickStats = QuickStats { 
     spread: spread_static,
     zscore: zscore_static,
     hedge_ratio: hedge_ratio_static,
-    half_life: half_life_static
+    half_life: half_life_static,
+    relationship: relationship.clone()
   };
 
   let stats_dynamic: QuickStats = QuickStats { 
     spread: spread_dynamic,
     zscore: zscore_dynamic,
     hedge_ratio: hedge_ratio_dynamic,
-    half_life: half_life_dynamic
+    half_life: half_life_dynamic,
+    relationship
   };
 
   let stats_output: StatsOutput = StatsOutput { stats_static, stats_dynamic, coint, corr };

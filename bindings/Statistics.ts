@@ -2,14 +2,4 @@
 import type { Coint } from "./Coint";
 import type { Relationship } from "./Relationship";
 
-export interface Statistics {
-  coint: Coint;
-  corr: number;
-  half_life: number;
-  hedge_ratio: number;
-  spread: Array<number>;
-  zscore: Array<number>;
-  relationship: Relationship;
-  coint_roll: Array<number>;
-  corr_roll: Array<number>;
-}
+export interface Statistics { coint: Coint, corr: number, half_life: number, hedge_ratio: number, spread: Array<number>, zscore: Array<number>, relationship: Relationship, coint_roll: Array<number>, corr_roll: Array<number>, }

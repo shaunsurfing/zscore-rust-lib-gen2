@@ -1,4 +1,6 @@
 use crate::SmartError;
+use crate::backtest::utils::log_returns;
+use super::models::Relationship;
 
 /// ADF T Statistic
 /// Calculates the T-Statistic for ADF
@@ -60,17 +62,17 @@ pub fn simple_kalman_filter(series_0: &Vec<f64>, series_1: &Vec<f64>) -> Vec<f64
 
 /// Covar Calculation
 /// Required for beta calculation
-pub fn calculate_covariance(x: &[f64], y: &[f64]) -> Result<f64, SmartError> {
-  if x.len() != y.len() {
+pub fn calculate_covariance(log_returns_x: &[f64], log_returns_y: &[f64]) -> Result<f64, SmartError> {
+  if log_returns_x.len() != log_returns_y.len() {
       return Err(SmartError::RuntimeCheck("Datasets x and y must have the same length".to_string()));
   }
 
-  let n = x.len() as f64;
-  let mean_x: f64 = x.iter().sum::<f64>() / n;
-  let mean_y: f64 = y.iter().sum::<f64>() / n;
+  let n = log_returns_x.len() as f64;
+  let mean_x: f64 = log_returns_x.iter().sum::<f64>() / n;
+  let mean_y: f64 = log_returns_y.iter().sum::<f64>() / n;
 
-  let covariance: f64 = x.iter()
-    .zip(y.iter())
+  let covariance: f64 = log_returns_x.iter()
+    .zip(log_returns_y.iter())
     .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
     .sum::<f64>() / (n - 1.0);
 
@@ -79,10 +81,10 @@ pub fn calculate_covariance(x: &[f64], y: &[f64]) -> Result<f64, SmartError> {
 
 /// Var Calculation
 /// Required for beta calculation
-pub fn calculate_variance(series: &[f64]) -> f64 {
-  let n = series.len() as f64;
-  let mean: f64 = series.iter().sum::<f64>() / n;
-  let variance: f64 = series.iter()
+pub fn calculate_variance(log_returns: &[f64]) -> f64 {
+  let n = log_returns.len() as f64;
+  let mean: f64 = log_returns.iter().sum::<f64>() / n;
+  let variance: f64 = log_returns.iter()
     .map(|&x| (x - mean).powi(2))
     .sum::<f64>() / (n - 1.0);
   variance
@@ -90,33 +92,45 @@ pub fn calculate_variance(series: &[f64]) -> f64 {
 
 /// Historical Volatility
 /// Calculates historical annual volatility for a given asset
-pub fn calculate_historical_annual_volatility(series: &[f64], trading_days: usize) -> f64 {
-  let daily_returns: Vec<f64> = series.windows(2)
-    .map(|window| (window[1] - window[0]) / window[0])
-    .collect();
-
-  let mean_return: f64 = daily_returns.iter().sum::<f64>() / daily_returns.len() as f64;
-  let variance: f64 = daily_returns.iter()
-    .map(|&x| (x - mean_return).powi(2))
-    .sum::<f64>() / (daily_returns.len() - 1) as f64;
+pub fn calculate_historical_annual_volatility(log_returns: &[f64], trading_days: usize) -> f64 {
+  // Assuming log_returns is already a series of log returns
+  let mean_return: f64 = log_returns.iter().sum::<f64>() / log_returns.len() as f64;
+  let variance: f64 = log_returns.iter()
+      .map(|&x| (x - mean_return).powi(2))
+      .sum::<f64>() / (log_returns.len() - 1) as f64;
   let daily_volatility: f64 = variance.sqrt();
 
+  // Annualize the daily volatility
   daily_volatility * (trading_days as f64).sqrt()
 }
 
 /// Beta Coeff Calculation
 /// Used to determine the beta coeff for two assets in respect to one another
-pub fn calculate_beta_coefficient(x: &[f64], y: &[f64]) -> Result<f64, SmartError> {
-  let covariance = calculate_covariance(x, y)?;
-  let market_variance = calculate_variance(y);
+pub fn calculate_beta_coefficient(log_returns_x: &[f64], log_returns_y: &[f64]) -> Result<f64, SmartError> {
+  let covariance = calculate_covariance(log_returns_x, log_returns_y)?;
+  let market_variance = calculate_variance(log_returns_y);
   Ok(covariance / market_variance)
 }
 
 /// Volatility Ratio
 /// Used to determine the volatility ratio of two assets
-pub fn volatility_ratio(y: &[f64], x: &[f64], trading_days: usize) -> f64 {
-  let y_volatility = calculate_historical_annual_volatility(y, trading_days);
-  let x_volatility = calculate_historical_annual_volatility(x, trading_days);
+pub fn volatility_ratio(log_returns_y: &Vec<f64>, log_returns_x: &Vec<f64>, trading_days: usize) -> f64 {
+  let y_volatility = calculate_historical_annual_volatility(log_returns_y, trading_days);
+  let x_volatility = calculate_historical_annual_volatility(log_returns_x, trading_days);
   x_volatility / y_volatility
+}
+
+/// Calculate Relationship
+/// Relationship workings for prices
+pub fn calculate_relaitonship(y: &[f64], x: &[f64], trading_days: usize) -> Result<Relationship, SmartError> {
+  let log_returns_y = log_returns(&y.to_vec(), false);
+  let log_returns_x = log_returns(&x.to_vec(), false);
+  let beta_x_to_y: f64 = calculate_beta_coefficient(&log_returns_x, &log_returns_y).map_err(|e| SmartError::RuntimeCheck(e.to_string()))?;
+  let beta_y_to_x: f64 = calculate_beta_coefficient(&log_returns_y, &log_returns_x).map_err(|e| SmartError::RuntimeCheck(e.to_string()))?;
+  let annual_vol_y: f64 = calculate_historical_annual_volatility(&log_returns_y, trading_days);
+  let annual_vol_x: f64 = calculate_historical_annual_volatility(&log_returns_x, trading_days);
+  let vol_ratio_x_to_y: f64 = volatility_ratio(&log_returns_y, &log_returns_x, trading_days);
+  let relationship: Relationship = Relationship { beta_x_to_y, beta_y_to_x, annual_vol_y, annual_vol_x, vol_ratio_x_to_y };
+  Ok(relationship)
 }
 
