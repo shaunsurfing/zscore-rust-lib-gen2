@@ -418,7 +418,7 @@ mod tests {
     dbg!(&bt_criteria.indicator_values.len());
 
     let pair_prices_json = serde_json::to_string(&prices).unwrap();
-    let bt_criteria_json = serde_json::to_string(&bt_criteria).unwrap();;
+    let bt_criteria_json = serde_json::to_string(&bt_criteria).unwrap();
     let res_json = wasm_quick_backtest(pair_prices_json, bt_criteria_json.to_string()).await.unwrap();
     let res = serde_json::from_str::<BacktestMetrics>(&res_json).unwrap();
     dbg!(res.equity_curve.len());

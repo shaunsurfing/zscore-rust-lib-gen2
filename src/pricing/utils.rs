@@ -1,6 +1,4 @@
-use async_std::future::timeout;
 use std::time::Duration;
-
 use crate::SmartError;
 use super::models::HistoricalPrices;
 
@@ -83,6 +81,7 @@ pub async fn api_request(url: &str) -> Result<reqwest::Response, SmartError> {
 /// WASM VERSION
 #[cfg(target_arch = "wasm32")]
 pub async fn api_request(url: &str) -> Result<reqwest::Response, SmartError> {
+  use async_std::future::timeout;
 
   // WASM VERSION
   let req_future = reqwest::Client::new()

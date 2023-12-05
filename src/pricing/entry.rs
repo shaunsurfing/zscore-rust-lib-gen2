@@ -119,7 +119,7 @@ mod tests {
     let asset_1 = "USD/EUR".to_string();
     let exchange: Exchange = Exchange::Twelve;
 
-    let prices = fetch_prices(&interval_period, &exchange, &asset_0, &asset_1, Some(twelve_api_key.as_str())).await.unwrap();
+    let _prices = fetch_prices(&interval_period, &exchange, &asset_0, &asset_1, Some(twelve_api_key.as_str())).await.unwrap();
     // assert_eq!(prices.labels.len(), period as usize);
   }
 }

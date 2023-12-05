@@ -150,14 +150,17 @@ impl CandleBuilder {
   fn calculate_call_count(&self) -> (usize, i64) {
 
     let total_factor: f32 = match self.interval {
-      IntervalPeriod::Min(int, minutes) => {
-        minutes as f32 / int as f32
+      IntervalPeriod::Min(_int, minutes) => {
+        // minutes as f32 / int as f32
+        minutes as f32
       },
-      IntervalPeriod::Hour(int, hours) => {
-        hours as f32 / int as f32
+      IntervalPeriod::Hour(_int, hours) => {
+        // hours as f32 / int as f32
+        hours as f32
       },
-      IntervalPeriod::Day(int, days) => {
-        days as f32 / int as f32
+      IntervalPeriod::Day(_int, days) => {
+        // days as f32 / int as f32
+        days as f32
       }
     };
 
@@ -165,6 +168,12 @@ impl CandleBuilder {
     let call_ratio: f32 = total_factor / self.max_limit as f32;
     let iterations: usize = call_ratio.floor() as usize;
     let final_n: f32 = call_ratio.rem_euclid(1.0) * self.max_limit as f32;
+
+    // dbg!(&total_factor);
+    // dbg!(&call_ratio);
+    // dbg!(&self.max_limit);
+    // dbg!(&iterations);
+    // dbg!(&final_n);
 
     // Return iterations and final n
     (iterations, final_n as i64)
@@ -191,20 +200,22 @@ impl CandleBuilder {
       };
 
       call_items.push(call_item);
+
+      
       end_time = start_time;
     }
-
+    
     // Add final number if less than max required
     if final_n > 0 {
       let start_time: i64 = subtract_time(end_time, &self.interval, &final_n);
-
+      
       let call_item: CallItem = CallItem {
         from_time: start_time,
         to_time: end_time,
       };
       call_items.push(call_item);
     }
-
+    
     // Reverse times
     call_items.reverse();
     Ok(call_items)
@@ -482,6 +493,14 @@ mod tests {
     CandleBuilder::new(symbol, interval_period, exchange, api_key)
   }
 
+  fn structure_candle_builder_day(exchange: Exchange, symbol: &str, api_key: Option<&str>) -> CandleBuilder {
+    let symbol: String = symbol.to_string();
+    let interval: u8 = 1;
+    let interval_count: u32 = 360;
+    let interval_period: IntervalPeriod = IntervalPeriod::Day(interval, interval_count);
+    CandleBuilder::new(symbol, interval_period, exchange, api_key)
+  }
+
   #[tokio::test]
   async fn tests_calculate_call_count() {
     let price_builder: CandleBuilder = structure_candle_builder(Exchange::Dydx, "BTCUSDT", None);
@@ -491,8 +510,15 @@ mod tests {
   }
 
   #[tokio::test]
+  async fn tests_calculate_call_count_minute() {
+    let price_builder: CandleBuilder = structure_candle_builder_day(Exchange::Twelve, "AAPL", Some(""));
+    let (_iterations, final_n) = price_builder.calculate_call_count();
+    assert!(final_n > 0);
+  }
+
+  #[tokio::test]
   async fn tests_calls_required() {
-    let price_builder: CandleBuilder = structure_candle_builder(Exchange::Binance, "BTCUSDT", None);
+    let price_builder: CandleBuilder = structure_candle_builder_day(Exchange::Twelve, "AAPL", Some(""));
     let calls_required: Vec<CallItem> = price_builder.calls_required().await.unwrap();
     assert!(calls_required.len() > 0);
   }
@@ -553,7 +579,7 @@ mod tests {
       Err(_e) => panic!("Failed to read TWELVE_API_KEY"),
     };
 
-    let price_builder: CandleBuilder = structure_candle_builder(Exchange::Twelve, "USD/GBP", Some(&api_key));
+    let price_builder: CandleBuilder = structure_candle_builder_day(Exchange::Twelve, "AAPL", Some(&api_key));
     let hist_prices: HistoricalPrices = price_builder.fetch_prices_candles().await.unwrap();
     assert!(hist_prices.labels.len() > 0 && hist_prices.prices.len() > 0);
   }
