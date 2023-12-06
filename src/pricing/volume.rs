@@ -67,8 +67,12 @@ fn extract_high_volume_tickers_bybit(json_text: String) -> Result<HashMap<i32, S
 pub async fn request_high_volume_tickers(exchange: &Exchange) -> Result<Vec<String>, SmartError> {
 
   // Handle if exchange is Twelve and thus assumed to want forex for high volume tickers
-  if exchange == &Exchange::Twelve {
-    let currencies = vec!["USD/JPY", "USD/EUR", "USD/AUD", "USD/GBP", "USD/CHF", "USD/CAD", "EUR/GBP", "EUR/CHF", "EUR/JPY", "AUD/CAD"];
+  if exchange == &Exchange::Twelve { // AUDCHF GBPCAD GBPCAD 
+    let currencies = vec![
+      "USD/JPY", "USD/EUR", "USD/AUD", "USD/GBP", "USD/CHF", "USD/CAD", "EUR/GBP", "EUR/CHF", "EUR/JPY", 
+      "AUD/CAD", "EUR/AUD", "GBP/AUD", "CAD/CHF", "AUD/CHF", "GBP/CAD", "EUR/NZD"
+    ];
+
     return Ok(currencies.iter().map(|c| c.to_string()).collect())
   }
 
