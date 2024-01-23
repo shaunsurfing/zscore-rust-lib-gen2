@@ -385,10 +385,10 @@ mod tests {
   #[tokio::test]
   async fn it_performs_backtest() {
 
-    let asset_0: String = "ETCUSDT".to_string();
-    let asset_1: String = "ETHUSDT".to_string();
+    let asset_0: String = "API3USDT".to_string();
+    let asset_1: String = "DOGEUSDT".to_string();
     let exchange: Exchange = Exchange::Binance;
-    let interval_period: IntervalPeriod = IntervalPeriod::Hour(1, 710);
+    let interval_period: IntervalPeriod = IntervalPeriod::Day(1, 360);
 
     let data_criteria: DataCriteria = DataCriteria { 
       exchange, 
@@ -409,9 +409,9 @@ mod tests {
       rets_weighting_s0_perc: 0.5,
       long_series: LongSeries::Series0,
       stop_loss: 0.0,
-      long_thresh: -2.0,
+      long_thresh: -6.0,
       long_close_thresh: 0.0,
-      short_thresh: 2.0,
+      short_thresh: 6.0,
       short_close_thresh: 0.0
     };
 
@@ -421,6 +421,6 @@ mod tests {
     let bt_criteria_json = serde_json::to_string(&bt_criteria).unwrap();
     let res_json = wasm_quick_backtest(pair_prices_json, bt_criteria_json.to_string()).await.unwrap();
     let res = serde_json::from_str::<BacktestMetrics>(&res_json).unwrap();
-    dbg!(res.equity_curve.len());
+    dbg!(res.win_rate_stats);
   }
 }

@@ -91,7 +91,7 @@ impl Backtest {
 
   /// Create Signals
   /// Generates Signals and Relevant Baktest Information
-  fn create_signals(&self) -> Result<(Vec<i32>, Vec<f64>, WinRate), SmartError> {
+  fn create_signals(&self) -> Result<(Vec<i32>, Vec<f64>, WinRate, Vec<u64>), SmartError> {
 
     // Initialize
     let mut is_open: bool = false;
@@ -105,19 +105,26 @@ impl Backtest {
     let mut closed: u32 = 0;
     let mut closed_profit: u32 = 0;
 
+    let mut closed_ones: Vec<u64> = vec![0];
+
     let rolling_window: usize = 90; // used for cointegration check
     let corr_thresh: f64 = 0.8; // used for correlation check
 
     let cost_per_leg: f64 = match self.bt_criteria.cost_per_leg { Some(c) => c, None => 0.0 };
 
     for i in 1..self.bt_criteria.indicator_values.len() {
+      closed_ones.push(0);
 
       // Extract Indicator Value
       let ind_val: f64 = self.bt_criteria.indicator_values[i];
 
-      // Handle Returns Calc (helps check if profit for win rate)
-      let ser_0_ret: f64 = (self.series_0[i] / self.series_0[i - 1] - 1.0) * self.series_0_mul;
-      let ser_1_ret: f64 = (self.series_1[i] / self.series_1[i - 1] - 1.0) * -self.series_0_mul;
+      // Handle Returns Calc (helps check if profit for win rate) - important THIS IS LAGGED (whereas signal lags later on in the function)
+      let mut ser_0_ret = 0.0;
+      let mut ser_1_ret = 0.0;
+      if i < self.bt_criteria.indicator_values.len() - 1 {
+        ser_0_ret = (self.series_0[i + 1] / self.series_0[i]) * self.series_0_mul;
+        ser_1_ret = (self.series_1[i + 1] / self.series_1[i]) * -self.series_0_mul;
+      }
       
       // Confirm Long and Short Open Triggers
       let mut is_long_trigger: bool = false;
@@ -206,10 +213,12 @@ impl Backtest {
         trading_close_costs.push(cost_per_leg * 2.0);
         trading_open_costs.push(0.0);
         
-        tracked_profit += -cost_per_leg * 2.0;
+        // tracked_profit += -cost_per_leg * 2.0;
         if tracked_profit > 0.0 { closed_profit += 1; } 
         tracked_profit = 0.0;
         closed += 1;
+
+        closed_ones[i] = 1;
         continue;
       }
 
@@ -236,10 +245,11 @@ impl Backtest {
         .collect();
 
     // Structure Win Rate Metrics
-    let win_rate: f64 = closed_profit as f64 / closed as f64;
+    let mut win_rate: f64 = 0.0;
+    if closed != 0 { win_rate = closed_profit as f64 / closed as f64; }
     let win_rate_metrics: WinRate = WinRate { win_rate, opened, closed, closed_profit };
 
-    Ok((signals, trading_costs, win_rate_metrics))
+    Ok((signals, trading_costs, win_rate_metrics, closed_ones))
   }
 
   /// Strategy Returns
@@ -253,7 +263,6 @@ impl Backtest {
     // Calculate log returns
     let log_rets_0: Vec<f64> = log_returns(&self.series_0, true);
     let log_rets_1: Vec<f64> = log_returns(&self.series_1, true);
-
     
     // Calculate strategy log returns - series 0
     let series_0_r: Vec<f64> = log_rets_0.iter().zip(signals.iter())
@@ -298,9 +307,23 @@ impl Backtest {
   /// Run Backtest
   /// Entrypoint for running backtest
   pub fn run_backtest(&self) -> Result<BacktestMetrics, SmartError> {
-    let (signals, trading_costs, win_rate) = self.create_signals()?;
+    let (signals, trading_costs, initial_win_rate, closed_ones) = self.create_signals()?;
     let (net_lrets, net_cum_rets) = self.strategy_returns(signals, trading_costs);
-    let evaluation: Evaluation = Evaluation::new(net_lrets, net_cum_rets, win_rate);
+
+    // Force sense check for number of winning trades based on equity curve
+    let mut updated_closed_profit = 0;
+    for (i, c) in closed_ones.iter().enumerate() {
+      if *c == 1 && net_lrets[i] > 0.0 {
+        updated_closed_profit += 1;
+      }
+    }
+
+    let mut win_rate: f64 = 0.0;
+    if initial_win_rate.closed != 0 { win_rate = updated_closed_profit as f64 / initial_win_rate.closed as f64; }
+    let win_rate_stats: WinRate = WinRate { win_rate, opened: initial_win_rate.opened, closed: initial_win_rate.closed, closed_profit: updated_closed_profit };
+
+    // Run evaluation
+    let evaluation: Evaluation = Evaluation::new(net_lrets, net_cum_rets, win_rate_stats);
     let eval_metrics: BacktestMetrics = evaluation.run_evaluation_metrics();
     Ok(eval_metrics)
   }
