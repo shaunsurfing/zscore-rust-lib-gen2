@@ -385,9 +385,9 @@ mod tests {
   #[tokio::test]
   async fn it_performs_backtest() {
 
-    let asset_0: String = "API3USDT".to_string();
-    let asset_1: String = "DOGEUSDT".to_string();
-    let exchange: Exchange = Exchange::Binance;
+    let asset_0: String = "BTCUSDT".to_string();
+    let asset_1: String = "LINKUSDT".to_string();
+    let exchange: Exchange = Exchange::BinanceUs;
     let interval_period: IntervalPeriod = IntervalPeriod::Day(1, 360);
 
     let data_criteria: DataCriteria = DataCriteria { 
@@ -398,8 +398,8 @@ mod tests {
     };
 
     let prices: PairPrices = pair_prices(data_criteria, None).await.unwrap();
-    let (spread, _) = spread_static_std(&prices.series_0, &prices.series_1).unwrap();
-    let zscore = rolling_zscore(&spread, 35).unwrap();
+    let (spread, _) = spread_dynamic_kalman(&prices.series_0, &prices.series_1).unwrap();
+    let zscore = rolling_zscore(&spread, 21).unwrap();
     
     let bt_criteria: BacktestCriteria = BacktestCriteria {
       indicator_values: zscore,
@@ -409,13 +409,11 @@ mod tests {
       rets_weighting_s0_perc: 0.5,
       long_series: LongSeries::Series0,
       stop_loss: 0.0,
-      long_thresh: -6.0,
+      long_thresh: -4.0,
       long_close_thresh: 0.0,
-      short_thresh: 6.0,
+      short_thresh: 4.0,
       short_close_thresh: 0.0
     };
-
-    dbg!(&bt_criteria.indicator_values.len());
 
     let pair_prices_json = serde_json::to_string(&prices).unwrap();
     let bt_criteria_json = serde_json::to_string(&bt_criteria).unwrap();

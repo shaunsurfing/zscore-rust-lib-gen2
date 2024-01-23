@@ -312,9 +312,12 @@ impl Backtest {
 
     // Force sense check for number of winning trades based on equity curve
     let mut updated_closed_profit = 0;
+    let mut trade_ret_cum = 0.0;
     for (i, c) in closed_ones.iter().enumerate() {
-      if *c == 1 && net_lrets[i] > 0.0 {
-        updated_closed_profit += 1;
+      trade_ret_cum += net_lrets[i];
+      if *c == 1 {
+        if trade_ret_cum > 0.0 { updated_closed_profit += 1; }
+        trade_ret_cum = 0.0;
       }
     }
 
