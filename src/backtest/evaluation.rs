@@ -43,7 +43,7 @@ impl Evaluation {
 
   /// Drawdowns
   fn drawdowns(&self) -> Vec<f64> {
-    let norm_returns: Vec<f64> = log_to_simple_returns(&self.log_returns);
+    let norm_returns: Vec<f64> = self.cum_norm_returns.clone();
     let mut drawdowns: Vec<f64> = Vec::new();
     let mut max_return_so_far: f64 = norm_returns[0];
     for r in norm_returns {
@@ -53,6 +53,7 @@ impl Evaluation {
       let drawdown: f64 = max_return_so_far - r;
       drawdowns.push(-drawdown);
     }
+    
     drawdowns
   }
 
@@ -124,6 +125,25 @@ impl Evaluation {
     self.cum_norm_returns[self.cum_norm_returns.len() - 1]
   }
 
+  // Max Drawdown
+  fn calculate_max_drawdown(&self) -> f64 {
+    let mut max_drawdown = 0.0;
+    let equity_curve: Vec<f64> = self.log_returns.iter().scan(1.0, |state, &log_return| { *state *= log_return.exp(); Some(*state) }).collect();
+    let mut peak = equity_curve[0];
+
+    for &value in equity_curve.iter() {
+      if value > peak {
+        peak = value;
+      }
+      let drawdown = (peak - value) / peak;
+      if drawdown > max_drawdown {
+        max_drawdown = drawdown;
+      }
+    }
+
+    max_drawdown
+}
+
   /// Run Evaluation Metrics
   /// Calculates metrics and returns net evaluation serialized
   pub fn run_evaluation_metrics(&self) -> BacktestMetrics {
@@ -131,7 +151,7 @@ impl Evaluation {
     let arr: f64 = round_float(self.annual_rate_of_return(), 2);
     let drawdowns: Vec<f64> = self.drawdowns().iter().map(|f| round_float(*f, 3)).collect();
     let equity_curve: Vec<f64> = self.cum_norm_returns.iter().map(|f| round_float(*f, 4)).collect();
-    let max_drawdown: f64 = round_float(drawdowns.iter().cloned().fold(f64::NAN, f64::min), 2);
+    let max_drawdown: f64 = -round_float(self.calculate_max_drawdown(), 2);
     let mean_return: f64 = round_float(self.mean_return(), 3);
     let sharpe_ratio: f64 = round_float(self.sharpe_ratio(0.015), 2);
     let sortino_ratio: f64 = round_float(self.sortino_ratio(0.015), 2);
